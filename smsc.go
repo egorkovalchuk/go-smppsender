@@ -15,59 +15,18 @@ import (
 	"github.com/linxGnu/gosmpp/data"
 	"github.com/linxGnu/gosmpp/pdu"
 
+	structdata "github.com/egorkovalchuk/go-smppsender/StructData"
 	"github.com/egorkovalchuk/go-smppsender/iprest"
 )
 
 //Power by  Egor Kovalchuk
-
-//listnumber is список номеров из конфига
-type listnumber struct {
-	Name   string   //имя списка
-	Msisdn []string //массив из строк =- список номеров
-}
-
-//Сonfig is стурктура конфига
-type Config struct {
-	SMSC                 string //Строка коннекта с портом
-	SystemID             string // логин
-	Password             string // пароль
-	MsisdnFrom           string // отправитель по умолчанию
-	SrcSetTon            byte
-	SrcSetNpi            byte
-	DestSetTon           byte
-	DestSetNpi           byte
-	ProtocolID           byte
-	RegisteredDelivery   byte
-	ReplaceIfPresentFlag byte
-	EsmClass             byte
-	HTTPport             int
-	AuthType             int
-	UserAuth             string
-	PassAuth             string
-	IPRestrictionType    int
-	IPRestriction        []string
-	Listnumbers          []listnumber //список рассылок
-}
-
-//sms is структура sms
-type sms struct {
-	msisdnto   string // кому
-	msisdnfrom string // от кого
-	message    string // тельце
-}
-
-//Ответ хттп сервиса
-type Response struct {
-	Status string
-	Error  string
-}
 
 // логи
 const logFileName = "smsc.log"
 const pidFileName = "smsc.pid"
 
 //конфиг
-var cfg Config
+var cfg structdata.Config
 
 //режим работы сервиса(дебаг мод)
 var debugm bool
@@ -125,8 +84,8 @@ func main() {
 	// for Linux compile
 	stdaemon := flag.Bool("s", false, "a bool") // для передачи
 	// --for Linux compile
-	var list_name string
-	flag.StringVar(&list_name, "l", "", "Name list is not empty")
+	var listname string
+	flag.StringVar(&listname, "l", "", "Name list is not empty")
 	var message string
 	flag.StringVar(&message, "m", "", "Messge is not empty")
 	flag.Parse()
@@ -159,7 +118,7 @@ func main() {
 
 	} else {
 
-		if list_name == "" {
+		if listname == "" {
 			fmt.Println("Could not start, list name is empty")
 			return
 		}
@@ -171,10 +130,10 @@ func main() {
 
 		fmt.Println("Start")
 		if debugm {
-			fmt.Println("List Name:" + list_name)
+			fmt.Println("List Name:" + listname)
 			fmt.Println("message:" + message)
 		}
-		StartShellMode(message, list_name)
+		StartShellMode(message, listname)
 
 	}
 	fmt.Println("Done")
@@ -187,7 +146,7 @@ func processError(err error) {
 	os.Exit(2)
 }
 
-func readconf(cfg *Config, confname string) {
+func readconf(cfg *structdata.Config, confname string) {
 	file, err := os.Open(confname)
 	if err != nil {
 		processError(err)
@@ -207,7 +166,7 @@ func readconf(cfg *Config, confname string) {
 func StartShellMode(message string, listname string) {
 	var cnt bool
 	cnt = false
-	var preloadcf listnumber
+	var preloadcf structdata.Listnumber
 
 	fmt.Println("Check conf")
 	for _, cf := range cfg.Listnumbers {
@@ -231,12 +190,12 @@ func StartShellMode(message string, listname string) {
 	processing(&preloadcf, message)
 }
 
-func processing(preloadcf *listnumber, message string) {
-	smsrow := []sms{}
+func processing(preloadcf *structdata.Listnumber, message string) {
+	smsrow := []structdata.Sms{}
 
 	for _, cf := range preloadcf.Msisdn {
 
-		p := sms{cf, cfg.MsisdnFrom, message}
+		p := structdata.Sms{cf, cfg.MsisdnFrom, message}
 		if debugm {
 			fmt.Println("prepared sms ")
 			fmt.Println(p)
@@ -291,11 +250,11 @@ func processing(preloadcf *listnumber, message string) {
 
 	for _, p := range smsrow {
 
-		fmt.Println("Start proccess SMS: " + p.msisdnto)
-		if len(p.message) < 256 {
-			err = trans.Transceiver().Submit(newSubmitSM(p.msisdnfrom, p.msisdnto, p.message))
+		fmt.Println("Start proccess SMS: " + p.MsisdnTo)
+		if len(p.Message) < 256 {
+			err = trans.Transceiver().Submit(newSubmitSM(p.MsisdnFrom, p.MsisdnTo, p.Message))
 		} else {
-			newSubmitLongSM(p.msisdnfrom, p.msisdnto, p.message)
+			newSubmitLongSM(p.MsisdnFrom, p.MsisdnTo, p.Message)
 		}
 		if err != nil {
 			fmt.Println(err)
@@ -303,7 +262,7 @@ func processing(preloadcf *listnumber, message string) {
 		}
 
 		time.Sleep(time.Second)
-		fmt.Println("End proccess SMS: " + p.msisdnto)
+		fmt.Println("End proccess SMS: " + p.MsisdnTo)
 	}
 
 	//trans.Transceiver().Close()
@@ -449,7 +408,7 @@ func isConcatenatedDone(parts []string, total byte) bool {
 	return total == 0
 }
 
-func processinghttp(cfg *Config, debugm bool) {
+func processinghttp(cfg *structdata.Config, debugm bool) {
 
 	auth := gosmpp.Auth{
 		SMSC:       cfg.SMSC,
@@ -515,7 +474,7 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
 	var reloadconf string
 	var errortext string
-	var st Response
+	var st structdata.Response
 
 	if cfg.AuthType == 1 {
 
@@ -538,9 +497,9 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 		//load conf
 		readconf(&cfg, "smsc.ini")
 		if errortext == "" {
-			st = Response{"OK", errortext}
+			st = structdata.Response{"OK", errortext}
 		} else {
-			st = Response{"ERROR", errortext}
+			st = structdata.Response{"ERROR", errortext}
 		}
 
 		js, err := json.Marshal(st)
@@ -561,7 +520,7 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
 
-	ipallow, _ := iprest.IPRestCheck(cfg.IPRestriction, r.RemoteAddr)
+	ipallow, _ := iprest.IPRestCheck(cfg.IPRestriction, cfg.IPRestrictionType, r.RemoteAddr)
 
 	if !ipallow {
 		http.Error(w, "Access denied", 403)
@@ -589,7 +548,7 @@ func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 	type Response struct {
 		Status      string
 		Error       string
-		Listnumbers []listnumber
+		Listnumbers []structdata.Listnumber
 	}
 
 	var st Response
@@ -630,8 +589,8 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	var message string
 	var errortext string
 	var errortype int
-	var preloadcf listnumber
-	var st Response
+	var preloadcf structdata.Listnumber
+	var st structdata.Response
 
 	srcmsisdn = r.FormValue("src")
 	dstmsisdn = r.FormValue("dst")
@@ -648,7 +607,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		errortext += "Empty text "
 	}
 
-	smsrow := []sms{}
+	smsrow := []structdata.Sms{}
 	errortype = 0
 
 	if errortext == "" {
@@ -682,7 +641,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		if errortype != 1 {
 			for _, cf := range preloadcf.Msisdn {
 
-				p := sms{cf, srcmsisdn, message}
+				p := structdata.Sms{cf, srcmsisdn, message}
 				if debugm {
 					log.Println("prepared sms ")
 					log.Println(p)
@@ -692,7 +651,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if dstmsisdn != "" {
-			p := sms{dstmsisdn, srcmsisdn, message}
+			p := structdata.Sms{dstmsisdn, srcmsisdn, message}
 			smsrow = append(smsrow, p)
 			if debugm {
 				log.Println("prepared sms ")
@@ -708,15 +667,15 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, p := range smsrow {
 
-		log.Println("Start proccess SMS: " + p.msisdnto)
+		log.Println("Start proccess SMS: " + p.MsisdnTo)
 
 		if !emul {
-			if len(p.message) < 256 {
-				err = trans.Transceiver().Submit(newSubmitSM(p.msisdnfrom, p.msisdnto, p.message))
+			if len(p.Message) < 256 {
+				err = trans.Transceiver().Submit(newSubmitSM(p.MsisdnFrom, p.MsisdnTo, p.Message))
 
 			} else {
 				//err = trans.Transceiver().Submit(newSubmitLongSM(p.msisdnfrom, p.msisdnto, p.message))
-				newSubmitLongSM(p.msisdnfrom, p.msisdnto, p.message)
+				newSubmitLongSM(p.MsisdnFrom, p.MsisdnTo, p.Message)
 			}
 			if err != nil {
 				log.Println(err)
@@ -725,13 +684,13 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		time.Sleep(time.Second)
-		log.Println("End proccess SMS: " + p.msisdnto)
+		log.Println("End proccess SMS: " + p.MsisdnTo)
 	}
 
 	if errortext == "" {
-		st = Response{"OK", errortext}
+		st = structdata.Response{"OK", errortext}
 	} else {
-		st = Response{"ERROR", errortext}
+		st = structdata.Response{"ERROR", errortext}
 	}
 
 	js, err := json.Marshal(st)
