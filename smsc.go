@@ -515,6 +515,20 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 	var errortext string
 	var st Response
 
+	if cfg.AuthType == 1 {
+
+		username, password, authOK := r.BasicAuth()
+		if authOK == false {
+			http.Error(w, "Not authorized", 401)
+			return
+		}
+
+		if username != cfg.UserAuth || password != cfg.PassAuth {
+			http.Error(w, "Not authorized", 401)
+			return
+		}
+	}
+
 	reloadconf = r.FormValue("reloadconf")
 
 	//перегрузка конфига
@@ -544,6 +558,25 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 
 func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
+
+	w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+
+	if cfg.AuthType == 1 {
+
+		username, password, authOK := r.BasicAuth()
+		if authOK == false {
+			http.Error(w, "Not authorized", 401)
+			return
+		}
+
+		if username != cfg.UserAuth || password != cfg.PassAuth {
+			http.Error(w, "Not authorized", 401)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
 	type Response struct {
 		Status      string
 		Error       string
@@ -559,7 +592,6 @@ func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
 
 	return
@@ -568,6 +600,20 @@ func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
+
+	if cfg.AuthType == 1 {
+
+		username, password, authOK := r.BasicAuth()
+		if authOK == false {
+			http.Error(w, "Not authorized", 401)
+			return
+		}
+
+		if username != cfg.UserAuth || password != cfg.PassAuth {
+			http.Error(w, "Not authorized", 401)
+			return
+		}
+	}
 
 	var srcmsisdn string
 	var dstmsisdn string
