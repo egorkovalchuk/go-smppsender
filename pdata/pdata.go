@@ -1,4 +1,4 @@
-package structdata
+package pdata
 
 // Listnumber is список номеров из конфига
 type Listnumber struct {

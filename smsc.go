@@ -15,8 +15,8 @@ import (
 	"github.com/linxGnu/gosmpp/data"
 	"github.com/linxGnu/gosmpp/pdu"
 
-	structdata "github.com/egorkovalchuk/go-smppsender/StructData"
 	"github.com/egorkovalchuk/go-smppsender/iprest"
+	"github.com/egorkovalchuk/go-smppsender/pdata"
 )
 
 //Power by  Egor Kovalchuk
@@ -26,7 +26,7 @@ const logFileName = "smsc.log"
 const pidFileName = "smsc.pid"
 
 //конфиг
-var cfg structdata.Config
+var cfg pdata.Config
 
 //режим работы сервиса(дебаг мод)
 var debugm bool
@@ -146,7 +146,7 @@ func processError(err error) {
 	os.Exit(2)
 }
 
-func readconf(cfg *structdata.Config, confname string) {
+func readconf(cfg *pdata.Config, confname string) {
 	file, err := os.Open(confname)
 	if err != nil {
 		processError(err)
@@ -166,7 +166,7 @@ func readconf(cfg *structdata.Config, confname string) {
 func StartShellMode(message string, listname string) {
 	var cnt bool
 	cnt = false
-	var preloadcf structdata.Listnumber
+	var preloadcf pdata.Listnumber
 
 	fmt.Println("Check conf")
 	for _, cf := range cfg.Listnumbers {
@@ -190,12 +190,12 @@ func StartShellMode(message string, listname string) {
 	processing(&preloadcf, message)
 }
 
-func processing(preloadcf *structdata.Listnumber, message string) {
-	smsrow := []structdata.Sms{}
+func processing(preloadcf *pdata.Listnumber, message string) {
+	smsrow := []pdata.Sms{}
 
 	for _, cf := range preloadcf.Msisdn {
 
-		p := structdata.Sms{cf, cfg.MsisdnFrom, message}
+		p := pdata.Sms{cf, cfg.MsisdnFrom, message}
 		if debugm {
 			fmt.Println("prepared sms ")
 			fmt.Println(p)
@@ -408,7 +408,7 @@ func isConcatenatedDone(parts []string, total byte) bool {
 	return total == 0
 }
 
-func processinghttp(cfg *structdata.Config, debugm bool) {
+func processinghttp(cfg *pdata.Config, debugm bool) {
 
 	auth := gosmpp.Auth{
 		SMSC:       cfg.SMSC,
@@ -474,7 +474,7 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
 	var reloadconf string
 	var errortext string
-	var st structdata.Response
+	var st pdata.Response
 
 	if cfg.AuthType == 1 {
 
@@ -497,9 +497,9 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 		//load conf
 		readconf(&cfg, "smsc.ini")
 		if errortext == "" {
-			st = structdata.Response{"OK", errortext}
+			st = pdata.Response{"OK", errortext}
 		} else {
-			st = structdata.Response{"ERROR", errortext}
+			st = pdata.Response{"ERROR", errortext}
 		}
 
 		js, err := json.Marshal(st)
@@ -548,7 +548,7 @@ func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 	type Response struct {
 		Status      string
 		Error       string
-		Listnumbers []structdata.Listnumber
+		Listnumbers []pdata.Listnumber
 	}
 
 	var st Response
@@ -589,8 +589,8 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	var message string
 	var errortext string
 	var errortype int
-	var preloadcf structdata.Listnumber
-	var st structdata.Response
+	var preloadcf pdata.Listnumber
+	var st pdata.Response
 
 	srcmsisdn = r.FormValue("src")
 	dstmsisdn = r.FormValue("dst")
@@ -607,7 +607,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		errortext += "Empty text "
 	}
 
-	smsrow := []structdata.Sms{}
+	smsrow := []pdata.Sms{}
 	errortype = 0
 
 	if errortext == "" {
@@ -641,7 +641,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		if errortype != 1 {
 			for _, cf := range preloadcf.Msisdn {
 
-				p := structdata.Sms{cf, srcmsisdn, message}
+				p := pdata.Sms{cf, srcmsisdn, message}
 				if debugm {
 					log.Println("prepared sms ")
 					log.Println(p)
@@ -651,7 +651,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if dstmsisdn != "" {
-			p := structdata.Sms{dstmsisdn, srcmsisdn, message}
+			p := pdata.Sms{dstmsisdn, srcmsisdn, message}
 			smsrow = append(smsrow, p)
 			if debugm {
 				log.Println("prepared sms ")
@@ -688,9 +688,9 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if errortext == "" {
-		st = structdata.Response{"OK", errortext}
+		st = pdata.Response{"OK", errortext}
 	} else {
-		st = structdata.Response{"ERROR", errortext}
+		st = pdata.Response{"ERROR", errortext}
 	}
 
 	js, err := json.Marshal(st)
