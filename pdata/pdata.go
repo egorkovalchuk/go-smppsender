@@ -1,5 +1,9 @@
 package pdata
 
+import (
+	"net"
+)
+
 // Listnumber is список номеров из конфига
 type Listnumber struct {
 	// Name list
@@ -47,6 +51,8 @@ type Config struct {
 	IPRestrictionType int
 	// IPRestriction List IP mask for allow access
 	IPRestriction []string
+	// Nets map
+	Nets []net.IPNet
 	// Listnumbers List destination
 	Listnumbers []Listnumber
 }

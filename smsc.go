@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -62,9 +63,6 @@ func main() {
 
 	progName = os.Args[0]
 
-	//load conf
-	readconf(&cfg, "smsc.ini")
-
 	if os.Args != nil && len(os.Args) > 1 {
 		argument = os.Args[1]
 	} else {
@@ -90,20 +88,13 @@ func main() {
 	flag.StringVar(&message, "m", "", "Messge is not empty")
 	flag.Parse()
 
-	if version {
-		fmt.Println("Version utils " + versionutil)
-		return
-	}
-
-	if startdaemon || *stdaemon {
-
+	if startdaemon {
 		filer, err := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		log.SetOutput(filer)
-
 		log.Println("- - - - - - - - - - - - - - -")
 		log.Println("Start daemon mode")
 		if debugm {
@@ -111,6 +102,17 @@ func main() {
 		}
 
 		fmt.Println("Start daemon mode")
+	}
+
+	//load conf
+	readconf(&cfg, "smsc.ini")
+
+	if version {
+		fmt.Println("Version utils " + versionutil)
+		return
+	}
+
+	if startdaemon || *stdaemon {
 
 		processinghttp(&cfg, debugm)
 
@@ -160,6 +162,20 @@ func readconf(cfg *pdata.Config, confname string) {
 
 	file.Close()
 
+	if cfg.IPRestrictionType != 0 {
+		var nets []net.IPNet
+
+		for _, p := range cfg.IPRestriction {
+
+			n, err := iprest.IPRest(p)
+			if err != nil {
+				logwrite(err)
+			} else {
+				nets = append(nets, n)
+			}
+		}
+		cfg.Nets = nets
+	}
 }
 
 //StartShellMode запуск в режиме скрипта
@@ -520,29 +536,19 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
 
-	ipallow, _ := iprest.IPRestCheck(cfg.IPRestriction, cfg.IPRestrictionType, r.RemoteAddr)
+	ipallow, _ := iprest.IPRestCheck(w, r, &cfg)
 
 	if !ipallow {
-		http.Error(w, "Access denied", 403)
+		log.Printf("Access denied")
 		return
 	}
 
-	w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+	authallow, _ := iprest.AuthCheck(w, r, &cfg)
 
-	if cfg.AuthType == 1 {
-
-		username, password, authOK := r.BasicAuth()
-		if authOK == false {
-			http.Error(w, "Not authorized", 401)
-			return
-		}
-
-		if username != cfg.UserAuth || password != cfg.PassAuth {
-			http.Error(w, "Not authorized", 401)
-			return
-		}
+	if !authallow {
+		log.Printf("Not authorized")
+		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 
 	type Response struct {
