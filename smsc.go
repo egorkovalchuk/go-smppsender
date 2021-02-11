@@ -86,12 +86,12 @@ var version bool
 /*
 Vesion 0.1
 Add HTTP sevice
-Verson 0.2
+Verson 0.1.1
 Add authorization (Login / Pass)
 Verson 0.3
 Add restriction IP
 */
-const versionutil = "0.1"
+const versionutil = "0.1.1"
 
 func main() {
 
@@ -558,6 +558,8 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 
 func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
+
+	allow, _ := IPRestCheck(cfg.IPRestriction, r.RemoteAddr)
 
 	w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 
