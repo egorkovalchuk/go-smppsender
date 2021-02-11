@@ -14,6 +14,8 @@ import (
 	"github.com/linxGnu/gosmpp"
 	"github.com/linxGnu/gosmpp/data"
 	"github.com/linxGnu/gosmpp/pdu"
+
+	"github.com/egorkovalchuk/go-smppsender/iprest"
 )
 
 //Power by  Egor Kovalchuk
@@ -559,7 +561,12 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
 
-	allow, _ := IPRestCheck(cfg.IPRestriction, r.RemoteAddr)
+	ipallow, _ := iprest.IPRestCheck(cfg.IPRestriction, r.RemoteAddr)
+
+	if !ipallow {
+		http.Error(w, "Access denied", 403)
+		return
+	}
 
 	w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 
