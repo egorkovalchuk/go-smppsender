@@ -492,18 +492,19 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 	var errortext string
 	var st pdata.Response
 
-	if cfg.AuthType == 1 {
+	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, &cfg)
 
-		username, password, authOK := r.BasicAuth()
-		if authOK == false {
-			http.Error(w, "Not authorized", 401)
-			return
-		}
+	if !ipallow {
+		http.Error(w, "Access denied", 403)
+		log.Printf("Access denied")
+		return
+	}
 
-		if username != cfg.UserAuth || password != cfg.PassAuth {
-			http.Error(w, "Not authorized", 401)
-			return
-		}
+	authallow, _ := iprest.AuthCheck(w, r, &cfg)
+
+	if !authallow {
+		log.Printf("Not authorized")
+		return
 	}
 
 	reloadconf = r.FormValue("reloadconf")
@@ -536,9 +537,10 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
 
-	ipallow, _ := iprest.IPRestCheck(w, r, &cfg)
+	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, &cfg)
 
 	if !ipallow {
+		http.Error(w, "Access denied", 403)
 		log.Printf("Access denied")
 		return
 	}
@@ -575,20 +577,20 @@ func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
 
-	if cfg.AuthType == 1 {
+	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, &cfg)
 
-		username, password, authOK := r.BasicAuth()
-		if authOK == false {
-			http.Error(w, "Not authorized", 401)
-			return
-		}
-
-		if username != cfg.UserAuth || password != cfg.PassAuth {
-			http.Error(w, "Not authorized", 401)
-			return
-		}
+	if !ipallow {
+		http.Error(w, "Access denied", 403)
+		log.Printf("Access denied")
+		return
 	}
 
+	authallow, _ := iprest.AuthCheck(w, r, &cfg)
+
+	if !authallow {
+		log.Printf("Not authorized")
+		return
+	}
 	var srcmsisdn string
 	var dstmsisdn string
 	var lst string
