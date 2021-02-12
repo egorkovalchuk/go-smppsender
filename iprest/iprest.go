@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-
-	"github.com/egorkovalchuk/go-smppsender/pdata"
 )
 
 // IPRest reload config []string to []net.IPNet
@@ -36,13 +34,13 @@ func IPRest(p string) (nets net.IPNet, err error) {
 }
 
 // IPRestCheck Проверка по шаблонам IP
-func IPRestCheck(RemoteAddr string, cfg *pdata.Config) (allowed bool, err error) {
-	if cfg.IPRestrictionType == 1 {
+func IPRestCheck(RemoteAddr string, IPRestrictionType int, Nets []net.IPNet) (allowed bool, err error) {
+	if IPRestrictionType == 1 {
 
 		remoteipstring, _, _ := net.SplitHostPort(RemoteAddr)
 		ok := false
 		ip := net.ParseIP(remoteipstring)
-		for _, n := range cfg.Nets {
+		for _, n := range Nets {
 			if n.Contains(ip) {
 				ok = true
 				break
@@ -58,14 +56,14 @@ func IPRestCheck(RemoteAddr string, cfg *pdata.Config) (allowed bool, err error)
 }
 
 // AuthCheck проверка авторизации
-func AuthCheck(w http.ResponseWriter, r *http.Request, cfg *pdata.Config) (allowed bool, err error) {
-	if cfg.AuthType == 0 {
+func AuthCheck(w http.ResponseWriter, r *http.Request, AuthType int, UserAuth, PassAuth string) (allowed bool, err error) {
+	if AuthType == 0 {
 		return true, nil
 	}
 
 	w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 
-	if cfg.AuthType == 1 {
+	if AuthType == 1 {
 
 		username, password, authOK := r.BasicAuth()
 		if authOK == false {
@@ -73,7 +71,7 @@ func AuthCheck(w http.ResponseWriter, r *http.Request, cfg *pdata.Config) (allow
 			return false, nil
 		}
 
-		if username != cfg.UserAuth || password != cfg.PassAuth {
+		if username != UserAuth || password != PassAuth {
 			http.Error(w, "Not authorized", 401)
 			return false, nil
 		}

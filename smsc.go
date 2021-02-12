@@ -492,7 +492,7 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 	var errortext string
 	var st pdata.Response
 
-	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, &cfg)
+	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, cfg.IPRestrictionType, cfg.Nets)
 
 	if !ipallow {
 		http.Error(w, "Access denied", 403)
@@ -500,7 +500,7 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authallow, _ := iprest.AuthCheck(w, r, &cfg)
+	authallow, _ := iprest.AuthCheck(w, r, cfg.AuthType, cfg.UserAuth, cfg.PassAuth)
 
 	if !authallow {
 		log.Printf("Not authorized")
@@ -537,7 +537,7 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
 
-	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, &cfg)
+	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, cfg.IPRestrictionType, cfg.Nets)
 
 	if !ipallow {
 		http.Error(w, "Access denied", 403)
@@ -545,7 +545,7 @@ func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authallow, _ := iprest.AuthCheck(w, r, &cfg)
+	authallow, _ := iprest.AuthCheck(w, r, cfg.AuthType, cfg.UserAuth, cfg.PassAuth)
 
 	if !authallow {
 		log.Printf("Not authorized")
@@ -577,7 +577,7 @@ func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 func httpHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
 
-	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, &cfg)
+	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, cfg.IPRestrictionType, cfg.Nets)
 
 	if !ipallow {
 		http.Error(w, "Access denied", 403)
@@ -585,7 +585,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authallow, _ := iprest.AuthCheck(w, r, &cfg)
+	authallow, _ := iprest.AuthCheck(w, r, cfg.AuthType, cfg.UserAuth, cfg.PassAuth)
 
 	if !authallow {
 		log.Printf("Not authorized")
