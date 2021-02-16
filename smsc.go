@@ -211,7 +211,7 @@ func processing(preloadcf *pdata.Listnumber, message string) {
 
 	for _, cf := range preloadcf.Msisdn {
 
-		p := pdata.Sms{cf, cfg.MsisdnFrom, message}
+		p := pdata.Sms{MsisdnTo: cf, MsisdnFrom: cfg.MsisdnFrom, Message: message}
 		if debugm {
 			fmt.Println("prepared sms ")
 			fmt.Println(p)
@@ -514,9 +514,9 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 		//load conf
 		readconf(&cfg, "smsc.ini")
 		if errortext == "" {
-			st = pdata.Response{"OK", errortext}
+			st = pdata.Response{Status: "OK", Error: errortext}
 		} else {
-			st = pdata.Response{"ERROR", errortext}
+			st = pdata.Response{Status: "ERROR", Error: errortext}
 		}
 
 		js, err := json.Marshal(st)
@@ -649,7 +649,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		if errortype != 1 {
 			for _, cf := range preloadcf.Msisdn {
 
-				p := pdata.Sms{cf, srcmsisdn, message}
+				p := pdata.Sms{MsisdnTo: cf, MsisdnFrom: srcmsisdn, Message: message}
 				if debugm {
 					log.Println("prepared sms ")
 					log.Println(p)
@@ -659,7 +659,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if dstmsisdn != "" {
-			p := pdata.Sms{dstmsisdn, srcmsisdn, message}
+			p := pdata.Sms{MsisdnTo: dstmsisdn, MsisdnFrom: srcmsisdn, Message: message}
 			smsrow = append(smsrow, p)
 			if debugm {
 				log.Println("prepared sms ")
@@ -696,9 +696,9 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if errortext == "" {
-		st = pdata.Response{"OK", errortext}
+		st = pdata.Response{Status: "OK", Error: errortext}
 	} else {
-		st = pdata.Response{"ERROR", errortext}
+		st = pdata.Response{Status: "ERROR", Error: errortext}
 	}
 
 	js, err := json.Marshal(st)

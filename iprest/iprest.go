@@ -25,7 +25,7 @@ func IPRest(p string) (nets net.IPNet, err error) {
 			maskint, _ := strconv.Atoi(maskstring)
 			m = net.CIDRMask(maskint, 32)
 		}
-		nets = net.IPNet{n, m}
+		nets = net.IPNet{IP: n, Mask: m}
 	} else {
 		return nets, errors.New("Error parse IP " + p)
 	}
