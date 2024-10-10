@@ -26,33 +26,25 @@ import (
 const logFileName = "smsc.log"
 const pidFileName = "smsc.pid"
 
-//конфиг
+// конфиг
 var cfg pdata.Config
 
-//режим работы сервиса(дебаг мод)
+// режим работы сервиса(дебаг мод)
 var debugm bool
 var emul bool
 
-//Переменная для работы с смсц
-var trans *gosmpp.TransceiverSession
+// Переменная для работы с смсц
+var trans *gosmpp.Session
 
-//ошибки
+// ошибки
 var err error
 
-//режим работы сервиса
+// режим работы сервиса
 var startdaemon bool
 
-//запрос версии
+// запрос версии
 var version bool
 
-/*
-Vesion 0.1
-Add HTTP sevice
-Verson 0.1.1
-Add authorization (Login / Pass)
-Verson 0.3
-Add restriction IP
-*/
 const versionutil = "0.1.1"
 
 func main() {
@@ -114,7 +106,7 @@ func main() {
 
 	if startdaemon || *stdaemon {
 
-		processinghttp(&cfg, debugm)
+		processinghttp(&cfg)
 
 		log.Println("daemon terminated")
 
@@ -178,7 +170,7 @@ func readconf(cfg *pdata.Config, confname string) {
 	}
 }
 
-//StartShellMode запуск в режиме скрипта
+// StartShellMode запуск в режиме скрипта
 func StartShellMode(message string, listname string) {
 	var cnt bool
 	cnt = false
@@ -228,7 +220,7 @@ func processing(preloadcf *pdata.Listnumber, message string) {
 		SystemType: "",
 	}
 
-	trans, err := gosmpp.NewTransceiverSession(gosmpp.NonTLSDialer, auth, gosmpp.TransceiveSettings{
+	trans, err := gosmpp.NewSession(gosmpp.TRXConnector(gosmpp.NonTLSDialer, auth), gosmpp.Settings{
 		EnquireLink: 5 * time.Second,
 
 		WriteTimeout: time.Second,
@@ -424,7 +416,7 @@ func isConcatenatedDone(parts []string, total byte) bool {
 	return total == 0
 }
 
-func processinghttp(cfg *pdata.Config, debugm bool) {
+func processinghttp(cfg *pdata.Config) {
 
 	auth := gosmpp.Auth{
 		SMSC:       cfg.SMSC,
@@ -434,7 +426,7 @@ func processinghttp(cfg *pdata.Config, debugm bool) {
 	}
 
 	if !emul {
-		trans, err = gosmpp.NewTransceiverSession(gosmpp.NonTLSDialer, auth, gosmpp.TransceiveSettings{
+		trans, err = gosmpp.NewSession(gosmpp.TRXConnector(gosmpp.NonTLSDialer, auth), gosmpp.Settings{
 			EnquireLink: 5 * time.Second,
 
 			WriteTimeout: time.Second,
@@ -495,7 +487,7 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, cfg.IPRestrictionType, cfg.Nets)
 
 	if !ipallow {
-		http.Error(w, "Access denied", 403)
+		http.Error(w, "Access denied", http.StatusForbidden)
 		log.Printf("Access denied")
 		return
 	}
@@ -531,7 +523,6 @@ func httpHandlerconf(w http.ResponseWriter, r *http.Request) {
 	}
 
 	return
-
 }
 
 func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
@@ -540,7 +531,7 @@ func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, cfg.IPRestrictionType, cfg.Nets)
 
 	if !ipallow {
-		http.Error(w, "Access denied", 403)
+		http.Error(w, "Access denied", http.StatusForbidden)
 		log.Printf("Access denied")
 		return
 	}
@@ -559,8 +550,7 @@ func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 		Listnumbers []pdata.Listnumber
 	}
 
-	var st Response
-	st = Response{"OK", "", cfg.Listnumbers}
+	st := Response{"OK", "", cfg.Listnumbers}
 
 	js, err := json.Marshal(st)
 	if err != nil {
@@ -569,9 +559,7 @@ func httpHandlerlist(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(js)
-
 	return
-
 }
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
@@ -580,7 +568,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	ipallow, _ := iprest.IPRestCheck(r.RemoteAddr, cfg.IPRestrictionType, cfg.Nets)
 
 	if !ipallow {
-		http.Error(w, "Access denied", 403)
+		http.Error(w, "Access denied", http.StatusForbidden)
 		log.Printf("Access denied")
 		return
 	}
